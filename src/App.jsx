@@ -27,7 +27,6 @@ function Icon({ name, size = 20 }) {
     undo: <><path d="M9 7 4 12l5 5" /><path d="M4 12h9a6 6 0 1 1 0 12h-2" /></>,
     new: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6M8 13h8M8 17h6" /></>,
     history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5M12 7v5l3 2" /></>,
-    shuffle: <><path d="m18 14 4 4-4 4" /><path d="M2 18h2.5a6 6 0 0 0 5.2-3l4.6-8a6 6 0 0 1 5.2-3H22" /><path d="m18 2 4 2-4 4" /><path d="M2 4h2.5a6 6 0 0 1 4.1 1.6" /></>,
     camera: <><path d="M14.5 4H9.5L8 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4Z" /><circle cx="12" cy="13" r="3" /></>,
     close: <><path d="m6 6 12 12M18 6 6 18" /></>,
   };
@@ -139,14 +138,6 @@ function App() {
     }
   }
 
-  async function drawRandom() {
-    const available = Array.from({ length: 75 }, (_, index) => index + 1).filter((number) => !calledNumbers.has(number));
-    if (!available.length) return setMessage('Todos os 75 números já foram chamados.');
-    const random = available[Math.floor(Math.random() * available.length)];
-    setValue(String(random));
-    await addCall(random);
-  }
-
   async function undo() {
     if (!game || busy || !game.calls.length) return;
     setBusy(true);
@@ -249,12 +240,9 @@ function App() {
               disabled={isArchive}
             />
             <button className="primary-button" type="submit" disabled={busy || isArchive || !value}>
-              <Icon name="plus" /> Adicionar número
+              <Icon name="plus" /> Adicionar
             </button>
           </form>
-          <button className="draw-button" onClick={drawRandom} disabled={busy || isArchive}>
-            <Icon name="shuffle" /> Sortear automaticamente
-          </button>
           <p className="hint">Digite um número de 1 a 75</p>
           {message && <p className="message" role="alert">{message}</p>}
           <button className="secondary-button" onClick={undo} disabled={busy || isArchive || !calls.length}>
