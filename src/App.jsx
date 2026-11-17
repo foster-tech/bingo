@@ -98,6 +98,7 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
+  const [fullscreenPrompt, setFullscreenPrompt] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -112,6 +113,32 @@ function App() {
     api('/api/games/current').then(setGame).catch((error) => setInitialError(error.message));
     return () => streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setFullscreenPrompt(!document.fullscreenElement);
+
+    async function openFullscreen() {
+      if (document.fullscreenElement) return;
+      try {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      } catch {
+        setFullscreenPrompt(true);
+      }
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    openFullscreen();
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  async function enterFullscreen() {
+    try {
+      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      setFullscreenPrompt(false);
+    } catch {
+      setMessage('O navegador não permitiu abrir o painel em tela cheia.');
+    }
+  }
 
   async function refresh() {
     const fresh = await api('/api/games/current');
@@ -211,6 +238,16 @@ function App() {
 
   return (
     <main className="app-shell">
+      {fullscreenPrompt && (
+        <div className="fullscreen-gate" role="dialog" aria-modal="true" aria-labelledby="fullscreen-title">
+          <div>
+            <Logo />
+            <h2 id="fullscreen-title">Painel pronto para começar</h2>
+            <p>Abra em tela cheia para visualizar todos os controles do bingo.</p>
+            <button className="primary-button" onClick={enterFullscreen}>Abrir em tela cheia</button>
+          </div>
+        </div>
+      )}
       <aside className="control-panel">
         <Logo />
 
