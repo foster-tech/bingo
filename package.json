@@ -1,0 +1,25 @@
+{
+  "name": "bingo-foster",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n API,WEB -c cyan,magenta \"node --watch server.js\" \"vite\"",
+    "build": "vite build",
+    "test": "node --test tests/api.test.js",
+    "start": "node server.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.2.1",
+    "supertest": "^7.3.1",
+    "vite": "^7.1.9"
+  }
+}
