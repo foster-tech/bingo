@@ -78,7 +78,7 @@ function HistoryModal({ onClose, onSelect }) {
               <span className={`status-dot ${game.status}`} />
               <span className="history-main">
                 <strong>Jogo #{game.id}</strong>
-                <small>{new Date(`${game.started_at}Z`).toLocaleString('pt-BR')}</small>
+                <small>{new Date(game.started_at).toLocaleString('pt-BR')}</small>
               </span>
               <span className="history-count"><strong>{game.call_count}</strong><small>chamadas</small></span>
               <span className="chevron">›</span>

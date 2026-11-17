@@ -4,4 +4,7 @@ data/*.db
 data/*.db-*
 .vite/
 *.log
+.env
+.env.*
+!.env.example
 .DS_Store
