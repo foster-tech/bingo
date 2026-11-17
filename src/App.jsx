@@ -95,6 +95,7 @@ function App() {
   const [displayGame, setDisplayGame] = useState(null);
   const [value, setValue] = useState('');
   const [message, setMessage] = useState('');
+  const [initialError, setInitialError] = useState('');
   const [busy, setBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
@@ -109,7 +110,7 @@ function App() {
   const isArchive = Boolean(displayGame);
 
   useEffect(() => {
-    api('/api/games/current').then(setGame).catch((error) => setMessage(error.message));
+    api('/api/games/current').then(setGame).catch((error) => setInitialError(error.message));
     return () => streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
@@ -203,7 +204,19 @@ function App() {
     }
   }
 
-  if (!shown) return <main className="loading-screen"><div className="spinner" /><p>Preparando o painel…</p></main>;
+  if (!shown) {
+    return (
+      <main className="loading-screen">
+        {!initialError && <div className="spinner" />}
+        <p>{initialError || 'Preparando o painel…'}</p>
+        {initialError && (
+          <button className="primary-button" onClick={() => window.location.reload()}>
+            Tentar novamente
+          </button>
+        )}
+      </main>
+    );
+  }
 
   return (
     <main className="app-shell">

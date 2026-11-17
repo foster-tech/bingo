@@ -1,68 +1,63 @@
 import assert from 'node:assert/strict';
-import { after, before, test } from 'node:test';
-import fs from 'node:fs';
-import path from 'node:path';
+import { test } from 'node:test';
+import { defaultClientConfig, prismaPostgres } from '@prisma/ppg';
 import request from 'supertest';
 
-const databasePath = path.resolve('data/bingo-test.db');
+const databaseUrl = process.env.TEST_DATABASE_URL;
 
-for (const suffix of ['', '-shm', '-wal']) {
-  fs.rmSync(`${databasePath}${suffix}`, { force: true });
-}
+test('persiste jogos e chamadas, impede duplicidade e desfaz a última', {
+  skip: databaseUrl ? false : 'Defina TEST_DATABASE_URL para executar o teste de integração.',
+}, async () => {
+  process.env.DATABASE_URL = databaseUrl;
+  process.env.VERCEL = '1';
 
-process.env.BINGO_DB_PATH = databasePath;
+  const database = prismaPostgres(defaultClientConfig(databaseUrl));
+  const { default: app } = await import('../server.js');
 
-let app;
-let db;
+  await database.sql.exec`DROP TABLE IF EXISTS calls`;
+  await database.sql.exec`DROP TABLE IF EXISTS games`;
 
-before(async () => {
-  ({ app, db } = await import('../server.js'));
-});
+  try {
+    const currentResponse = await request(app).get('/api/games/current').expect(200);
+    const firstGame = currentResponse.body;
 
-after(() => {
-  db.close();
-  for (const suffix of ['', '-shm', '-wal']) {
-    fs.rmSync(`${databasePath}${suffix}`, { force: true });
+    const firstCall = await request(app)
+      .post(`/api/games/${firstGame.id}/calls`)
+      .send({ number: 52 })
+      .expect(201);
+
+    assert.equal(firstCall.body.number, 52);
+    assert.equal(firstCall.body.sequence, 1);
+
+    await request(app)
+      .post(`/api/games/${firstGame.id}/calls`)
+      .send({ number: 52 })
+      .expect(409);
+
+    await request(app)
+      .post(`/api/games/${firstGame.id}/calls`)
+      .send({ number: 7 })
+      .expect(201);
+
+    const undone = await request(app)
+      .delete(`/api/games/${firstGame.id}/calls/last`)
+      .expect(200);
+
+    assert.equal(undone.body.number, 7);
+
+    const newGame = await request(app).post('/api/games').expect(201);
+    assert.notEqual(newGame.body.id, firstGame.id);
+
+    const games = await request(app).get('/api/games').expect(200);
+    assert.equal(games.body.length, 2);
+    assert.equal(games.body[0].status, 'active');
+    assert.equal(games.body[1].status, 'finished');
+    assert.equal(games.body[1].call_count, 1);
+
+    const archived = await request(app).get(`/api/games/${firstGame.id}`).expect(200);
+    assert.deepEqual(archived.body.calls.map((call) => call.number), [52]);
+  } finally {
+    await database.sql.exec`DROP TABLE IF EXISTS calls`;
+    await database.sql.exec`DROP TABLE IF EXISTS games`;
   }
-});
-
-test('persiste jogos e chamadas, impede duplicidade e desfaz a última', async () => {
-  const currentResponse = await request(app).get('/api/games/current').expect(200);
-  const firstGame = currentResponse.body;
-
-  const firstCall = await request(app)
-    .post(`/api/games/${firstGame.id}/calls`)
-    .send({ number: 52 })
-    .expect(201);
-
-  assert.equal(firstCall.body.number, 52);
-  assert.equal(firstCall.body.sequence, 1);
-
-  await request(app)
-    .post(`/api/games/${firstGame.id}/calls`)
-    .send({ number: 52 })
-    .expect(409);
-
-  await request(app)
-    .post(`/api/games/${firstGame.id}/calls`)
-    .send({ number: 7 })
-    .expect(201);
-
-  const undone = await request(app)
-    .delete(`/api/games/${firstGame.id}/calls/last`)
-    .expect(200);
-
-  assert.equal(undone.body.number, 7);
-
-  const newGame = await request(app).post('/api/games').expect(201);
-  assert.notEqual(newGame.body.id, firstGame.id);
-
-  const games = await request(app).get('/api/games').expect(200);
-  assert.equal(games.body.length, 2);
-  assert.equal(games.body[0].status, 'active');
-  assert.equal(games.body[1].status, 'finished');
-  assert.equal(games.body[1].call_count, 1);
-
-  const archived = await request(app).get(`/api/games/${firstGame.id}`).expect(200);
-  assert.deepEqual(archived.body.calls.map((call) => call.number), [52]);
 });
