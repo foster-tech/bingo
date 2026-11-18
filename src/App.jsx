@@ -10,6 +10,7 @@ const columns = [
 
 const numberLetter = (number) => columns.find(({ start, end }) => number >= start && number <= end)?.letter ?? '';
 const pad = (value) => String(value).padStart(2, '0');
+const suggestedSupportAmounts = ['10', '20', '50'];
 
 async function api(url, options = {}) {
   const response = await fetch(url, {
@@ -35,10 +36,9 @@ function Icon({ name, size = 20 }) {
 
 function Logo() {
   return (
-    <div className="brand" aria-label="Bingo, painel de chamadas">
-      <div className="brand-word">BIN<span>GO</span></div>
+    <div className="brand" aria-label="SHOW DE PREMIOS">
+      <div className="brand-word">SHOW DE <span>PREMIOS</span></div>
       <div className="brand-line" />
-      <p>Painel de chamadas</p>
     </div>
   );
 }
@@ -99,6 +99,8 @@ function App() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [fullscreenPrompt, setFullscreenPrompt] = useState(false);
+  const [supportAmount, setSupportAmount] = useState('20');
+  const [pixQrAvailable, setPixQrAvailable] = useState(true);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -240,11 +242,63 @@ function App() {
     <main className="app-shell">
       {fullscreenPrompt && (
         <div className="fullscreen-gate" role="dialog" aria-modal="true" aria-labelledby="fullscreen-title">
-          <div>
-            <Logo />
-            <h2 id="fullscreen-title">Painel pronto para começar</h2>
-            <p>Abra em tela cheia para visualizar todos os controles do bingo.</p>
-            <button className="primary-button" onClick={enterFullscreen}>Abrir em tela cheia</button>
+          <div className="fullscreen-gate-card">
+            <section className="support-copy">
+              <Logo />
+              <p className="support-kicker">BINGO BENEFICENTE</p>
+              <h2 id="fullscreen-title">Apoie o projeto</h2>
+              <p className="support-message">
+                Este sistema apoia os bingos beneficentes das comunidades. Sua contribuição ajuda a manter a plataforma funcionando.
+              </p>
+
+              <div className="support-amounts" aria-label="Escolha um valor para contribuir">
+                {suggestedSupportAmounts.map((amount) => (
+                  <button
+                    type="button"
+                    className={supportAmount === amount ? 'selected' : ''}
+                    aria-pressed={supportAmount === amount}
+                    onClick={() => setSupportAmount(amount)}
+                    key={amount}
+                  >
+                    R$ {amount}
+                  </button>
+                ))}
+                <label className={!suggestedSupportAmounts.includes(supportAmount) ? 'selected' : ''}>
+                  <span>R$</span>
+                  <input
+                    aria-label="Outro valor de contribuição"
+                    type="number"
+                    inputMode="decimal"
+                    min="1"
+                    step="1"
+                    placeholder="Outro valor"
+                    value={suggestedSupportAmounts.includes(supportAmount) ? '' : supportAmount}
+                    onChange={(event) => setSupportAmount(event.target.value)}
+                  />
+                </label>
+              </div>
+              <small>Escolha uma sugestão ou informe qualquer valor.</small>
+            </section>
+
+            <section className="pix-support">
+              <div className="pix-qr-frame">
+                {pixQrAvailable ? (
+                  <img
+                    src="/pix-fostertech.jpg"
+                    alt="QR Code PIX da FosterTech"
+                    onError={() => setPixQrAvailable(false)}
+                  />
+                ) : (
+                  <div className="pix-qr-missing">
+                    <strong>QR PIX</strong>
+                    <span>Salve a imagem enviada como<br /><b>public/pix-fostertech.png</b></span>
+                  </div>
+                )}
+              </div>
+              <strong className="pix-title">PIX FosterTech</strong>
+              <span className="pix-hint">Escaneie o QR Code no aplicativo do seu banco.</span>
+              <button className="primary-button" onClick={enterFullscreen}>Abrir painel em tela cheia</button>
+            </section>
           </div>
         </div>
       )}

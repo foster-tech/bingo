@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n API,WEB -c cyan,magenta \"node --watch server.js\" \"vite\"",
+    "dev": "concurrently -k -n API,WEB -c cyan,magenta \"node --env-file-if-exists=.env --watch server.js\" \"vite\"",
     "build": "vite build",
     "test": "node --test tests/api.test.js",
-    "start": "node server.js",
+    "start": "node --env-file-if-exists=.env server.js",
     "preview": "vite preview"
   },
   "dependencies": {
