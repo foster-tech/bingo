@@ -1,6 +1,6 @@
 # Bingo • Painel de chamadas
 
-Aplicação React para conduzir partidas de bingo de 75 bolas. Todos os jogos e todas as chamadas são gravados em Prisma Postgres.
+Aplicação React para conduzir partidas de bingo de 75 bolas. Cada paróquia possui uma conta própria, com jogos, chamadas e histórico separados no Prisma Postgres.
 
 ## Executar em desenvolvimento
 
@@ -28,6 +28,14 @@ A aplicação completa ficará disponível em http://localhost:3001. Para desenv
 - `calls`: número, ordem e horário de cada chamada, associado ao jogo.
 
 O banco usa chaves estrangeiras, evita números repetidos no mesmo jogo e mantém todo o histórico disponível no botão **Ver histórico**. As tabelas são criadas automaticamente na primeira chamada à API.
+
+## Contas e paróquias
+
+- O cadastro solicita nome da paróquia, nome do responsável, e-mail e senha.
+- A senha é armazenada com hash `scrypt`, nunca em texto puro.
+- A sessão permanece ativa por 30 dias em cookie `HttpOnly`.
+- Todas as rotas de jogos validam a paróquia da sessão antes de consultar ou alterar dados.
+- No primeiro cadastro, jogos antigos ainda sem paróquia são vinculados automaticamente à primeira conta.
 
 ## Testes
 

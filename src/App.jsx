@@ -18,7 +18,14 @@ async function api(url, options = {}) {
     ...options,
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Erro inesperado.');
+  if (!response.ok) {
+    const error = new Error(data.error || 'Erro inesperado.');
+    error.status = response.status;
+    if (response.status === 401 && !url.startsWith('/api/auth/')) {
+      window.dispatchEvent(new Event('bingo:unauthorized'));
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -40,6 +47,95 @@ function Logo() {
       <div className="brand-word">SHOW DE <span>PREMIOS</span></div>
       <div className="brand-line" />
     </div>
+  );
+}
+
+function AuthScreen({ onAuthenticated }) {
+  const [mode, setMode] = useState('login');
+  const [form, setForm] = useState({ parishName: '', name: '', email: '', password: '' });
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const registering = mode === 'register';
+
+  function updateField(event) {
+    setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const account = await api(`/api/auth/${registering ? 'register' : 'login'}`, {
+        method: 'POST',
+        body: JSON.stringify(form),
+      });
+      await onAuthenticated(account);
+    } catch (submitError) {
+      setError(submitError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function changeMode(nextMode) {
+    setMode(nextMode);
+    setError('');
+  }
+
+  return (
+    <main className="auth-screen">
+      <section className="auth-card">
+        <div className="auth-intro">
+          <Logo />
+          <p className="support-kicker">BINGO DA COMUNIDADE</p>
+          <h1>Um painel para cada paróquia</h1>
+          <p>Cada comunidade mantém seus próprios jogos, chamadas e histórico em segurança.</p>
+          <div className="auth-benefits">
+            <span><b>01</b> Cadastro rápido</span>
+            <span><b>02</b> Histórico separado</span>
+            <span><b>03</b> Acesso persistente</span>
+          </div>
+        </div>
+
+        <div className="auth-form-panel">
+          <div className="auth-tabs" role="tablist" aria-label="Acesso à conta">
+            <button className={!registering ? 'active' : ''} onClick={() => changeMode('login')} type="button">Entrar</button>
+            <button className={registering ? 'active' : ''} onClick={() => changeMode('register')} type="button">Criar conta</button>
+          </div>
+          <h2>{registering ? 'Cadastre sua paróquia' : 'Acesse sua paróquia'}</h2>
+          <p>{registering ? 'Leva menos de um minuto.' : 'Continue de onde sua comunidade parou.'}</p>
+
+          <form onSubmit={submit}>
+            {registering && (
+              <>
+                <label>
+                  <span>Nome da paróquia</span>
+                  <input name="parishName" value={form.parishName} onChange={updateField} autoComplete="organization" required minLength="3" placeholder="Ex.: Paróquia São José" />
+                </label>
+                <label>
+                  <span>Seu nome</span>
+                  <input name="name" value={form.name} onChange={updateField} autoComplete="name" required minLength="2" placeholder="Responsável pelo bingo" />
+                </label>
+              </>
+            )}
+            <label>
+              <span>E-mail</span>
+              <input name="email" type="email" value={form.email} onChange={updateField} autoComplete="email" required placeholder="voce@paroquia.org.br" />
+            </label>
+            <label>
+              <span>Senha</span>
+              <input name="password" type="password" value={form.password} onChange={updateField} autoComplete={registering ? 'new-password' : 'current-password'} required minLength="8" placeholder="Mínimo de 8 caracteres" />
+            </label>
+            {error && <p className="auth-error" role="alert">{error}</p>}
+            <button className="primary-button" type="submit" disabled={busy}>
+              {busy ? 'Aguarde…' : registering ? 'Criar conta da paróquia' : 'Entrar no painel'}
+            </button>
+          </form>
+          <small>Ao entrar, sua sessão permanece ativa neste dispositivo por 30 dias.</small>
+        </div>
+      </section>
+    </main>
   );
 }
 
@@ -90,6 +186,8 @@ function HistoryModal({ onClose, onSelect }) {
 }
 
 function App() {
+  const [account, setAccount] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [game, setGame] = useState(null);
   const [displayGame, setDisplayGame] = useState(null);
   const [value, setValue] = useState('');
@@ -112,8 +210,32 @@ function App() {
   const isArchive = Boolean(displayGame);
 
   useEffect(() => {
-    api('/api/games/current').then(setGame).catch((error) => setInitialError(error.message));
+    async function initialize() {
+      try {
+        const currentAccount = await api('/api/auth/me');
+        setAccount(currentAccount);
+        setGame(await api('/api/games/current'));
+      } catch (error) {
+        if (error.status === 401) setAccount(null);
+        else setInitialError(error.message);
+      } finally {
+        setAuthChecked(true);
+      }
+    }
+
+    initialize();
     return () => streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setAccount(null);
+      setGame(null);
+      setDisplayGame(null);
+      setHistoryOpen(false);
+    };
+    window.addEventListener('bingo:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('bingo:unauthorized', handleUnauthorized);
   }, []);
 
   useEffect(() => {
@@ -139,6 +261,28 @@ function App() {
       setFullscreenPrompt(false);
     } catch {
       setMessage('O navegador não permitiu abrir o painel em tela cheia.');
+    }
+  }
+
+  async function handleAuthenticated(nextAccount) {
+    setAccount(nextAccount);
+    setInitialError('');
+    setGame(await api('/api/games/current'));
+  }
+
+  async function logout() {
+    setBusy(true);
+    try {
+      await api('/api/auth/logout', { method: 'POST' });
+    } finally {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      setCameraOn(false);
+      setAccount(null);
+      setGame(null);
+      setDisplayGame(null);
+      setHistoryOpen(false);
+      setBusy(false);
+      if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
     }
   }
 
@@ -224,16 +368,37 @@ function App() {
     }
   }
 
-  if (!shown) {
+  if (!authChecked) {
     return (
       <main className="loading-screen">
         {!initialError && <div className="spinner" />}
-        <p>{initialError || 'Preparando o painel…'}</p>
+        <p>{initialError || 'Verificando seu acesso…'}</p>
         {initialError && (
           <button className="primary-button" onClick={() => window.location.reload()}>
             Tentar novamente
           </button>
         )}
+      </main>
+    );
+  }
+
+  if (!account && initialError) {
+    return (
+      <main className="loading-screen">
+        <p>{initialError}</p>
+        <button className="primary-button" onClick={() => window.location.reload()}>Tentar novamente</button>
+      </main>
+    );
+  }
+
+  if (!account) return <AuthScreen onAuthenticated={handleAuthenticated} />;
+
+  if (!shown) {
+    return (
+      <main className="loading-screen">
+        {!initialError && <div className="spinner" />}
+        <p>{initialError || 'Preparando o painel…'}</p>
+        {initialError && <button className="primary-button" onClick={() => window.location.reload()}>Tentar novamente</button>}
       </main>
     );
   }
@@ -304,6 +469,15 @@ function App() {
       )}
       <aside className="control-panel">
         <Logo />
+
+        <div className="account-card">
+          <div>
+            <span>PARÓQUIA</span>
+            <strong>{account.parish.name}</strong>
+            <small>{account.user.name}</small>
+          </div>
+          <button type="button" onClick={logout} disabled={busy}>Sair</button>
+        </div>
 
         <div className="score-row">
           <div className="score-card"><span>CHAMADAS</span><strong>{pad(calls.length)}</strong></div>

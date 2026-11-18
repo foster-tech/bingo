@@ -27,6 +27,31 @@ body {
 button, input { font: inherit; }
 button { color: inherit; }
 
+.auth-screen { min-height: 100vh; padding: 24px; display: grid; place-items: center; background: radial-gradient(circle at 18% 12%, rgba(11, 172, 255, .13), transparent 32%), radial-gradient(circle at 88% 88%, rgba(121, 54, 255, .12), transparent 30%); }
+.auth-card { width: min(1040px, 100%); min-height: 610px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(380px, .95fr); overflow: hidden; border: 1px solid rgba(92, 143, 194, .35); border-radius: 24px; background: rgba(7, 13, 22, .94); box-shadow: 0 30px 100px rgba(0, 0, 0, .5); }
+.auth-intro { position: relative; padding: 58px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; background: radial-gradient(circle at 30% 28%, rgba(0, 176, 255, .16), transparent 33%), linear-gradient(145deg, #0d1928, #080e19); }
+.auth-intro::after { content: ''; position: absolute; width: 320px; height: 320px; right: -140px; bottom: -150px; border: 1px solid rgba(41, 187, 255, .2); border-radius: 50%; box-shadow: 0 0 0 48px rgba(41, 187, 255, .025), 0 0 0 96px rgba(41, 187, 255, .02); }
+.auth-intro .brand { padding-left: 0; }
+.auth-intro h1 { max-width: 470px; margin: 8px 0 14px; font-family: 'Bahnschrift Condensed', 'Arial Narrow', sans-serif; font-size: clamp(40px, 4.2vw, 62px); line-height: .98; }
+.auth-intro > p:not(.support-kicker) { max-width: 450px; margin: 0; color: #9eacc0; font-size: 16px; line-height: 1.6; }
+.auth-benefits { position: relative; z-index: 1; margin-top: 36px; display: grid; gap: 13px; }
+.auth-benefits span { display: flex; align-items: center; gap: 12px; color: #b7c5d8; font-weight: 700; }
+.auth-benefits b { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(24, 201, 255, .32); border-radius: 9px; color: var(--cyan); background: rgba(24, 201, 255, .08); font-size: 11px; }
+.auth-form-panel { padding: 48px; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(155deg, rgba(12, 20, 31, .98), rgba(7, 12, 20, .98)); }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; margin-bottom: 25px; border: 1px solid rgba(99, 139, 186, .25); border-radius: 11px; background: rgba(5, 10, 17, .72); }
+.auth-tabs button { min-height: 40px; border: 0; border-radius: 8px; background: transparent; color: #7d8ba0; cursor: pointer; font-weight: 800; }
+.auth-tabs button.active { color: white; background: rgba(26, 154, 226, .18); box-shadow: inset 0 0 0 1px rgba(24, 201, 255, .22); }
+.auth-form-panel h2 { margin: 0 0 5px; font-family: 'Bahnschrift Condensed', 'Arial Narrow', sans-serif; font-size: 32px; }
+.auth-form-panel > p { margin: 0 0 22px; color: #7f8da2; }
+.auth-form-panel form { display: grid; gap: 14px; }
+.auth-form-panel label { display: grid; gap: 7px; }
+.auth-form-panel label span { color: #acb8c9; font-size: 12px; font-weight: 800; }
+.auth-form-panel input { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid rgba(110, 148, 194, .38); border-radius: 10px; outline: 0; background: rgba(5, 11, 19, .82); color: white; }
+.auth-form-panel input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(24, 201, 255, .1); }
+.auth-form-panel form .primary-button { width: 100%; margin-top: 4px; }
+.auth-form-panel > small { margin-top: 13px; color: #657287; text-align: center; line-height: 1.4; }
+.auth-error { margin: 0; padding: 10px 12px; border: 1px solid rgba(255, 88, 116, .35); border-radius: 9px; color: #ff9dad; background: rgba(255, 58, 94, .08); font-size: 12px; }
+
 .app-shell {
   width: min(1880px, calc(100% - 24px));
   min-height: calc(100vh - 24px);
@@ -59,6 +84,15 @@ button { color: inherit; }
 .brand-word span { background: linear-gradient(180deg, #19c9ff, #087bf3 70%); -webkit-background-clip: text; color: transparent; }
 .brand-line { width: 145px; height: 4px; margin-top: 8px; background: linear-gradient(90deg, #ff3cea, #4439ff); border-radius: 99px; }
 .brand p { margin: 8px 0 0; color: #aab5c9; font-size: 19px; font-weight: 700; letter-spacing: .2px; }
+
+.account-card { min-height: 68px; padding: 10px 11px 10px 14px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(86, 144, 190, .28); border-radius: 12px; background: rgba(11, 21, 32, .78); }
+.account-card > div { min-width: 0; flex: 1; display: grid; gap: 1px; }
+.account-card span { color: var(--cyan); font-size: 8px; font-weight: 900; letter-spacing: 1.2px; }
+.account-card strong, .account-card small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-card strong { font-size: 13px; }
+.account-card small { color: #7e8ba0; font-size: 10px; }
+.account-card button { padding: 7px 9px; border: 1px solid rgba(124, 157, 198, .3); border-radius: 8px; background: transparent; color: #91a0b5; cursor: pointer; font-size: 11px; font-weight: 800; }
+.account-card button:hover { color: white; border-color: rgba(24, 201, 255, .45); }
 
 .score-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .score-card, .control-card, .recent-card, .parish-logo-card {
@@ -239,6 +273,12 @@ button:disabled { opacity: .42; cursor: not-allowed; }
   .main-stage { grid-row: 1; }.number-row { grid-template-columns: 54px minmax(680px, 1fr); }.number-board { overflow-x: auto; padding-bottom: 5px; }.letter-cell { position: sticky; left: 0; z-index: 2; }
   .fullscreen-gate-card { width: min(480px, 100%); grid-template-columns: 1fr; gap: 26px; }
   .pix-qr-frame { width: min(240px, 100%); }
+  .auth-screen { padding: 12px; }
+  .auth-card { width: min(520px, 100%); grid-template-columns: 1fr; }
+  .auth-intro { padding: 36px; }
+  .auth-intro h1 { font-size: 44px; }
+  .auth-benefits { display: none; }
+  .auth-form-panel { padding: 36px; }
 }
 
 @media (max-width: 520px) {
@@ -252,4 +292,9 @@ button:disabled { opacity: .42; cursor: not-allowed; }
   .fullscreen-gate-card { padding: 22px; gap: 22px; }
   .fullscreen-gate .brand-word { font-size: 48px; }
   .fullscreen-gate h2 { font-size: 32px; }
+  .auth-screen { padding: 0; place-items: start stretch; }
+  .auth-card { min-height: 100vh; border: 0; border-radius: 0; }
+  .auth-intro, .auth-form-panel { padding: 26px 22px; }
+  .auth-intro h1 { font-size: 36px; }
+  .auth-intro > p:not(.support-kicker) { font-size: 14px; }
 }

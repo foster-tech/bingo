@@ -5,59 +5,83 @@ import request from 'supertest';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 
-test('persiste jogos e chamadas, impede duplicidade e desfaz a última', {
+test('separa contas, jogos e histórico por paróquia', {
   skip: databaseUrl ? false : 'Defina TEST_DATABASE_URL para executar o teste de integração.',
 }, async () => {
   process.env.DATABASE_URL = databaseUrl;
   process.env.VERCEL = '1';
 
   const database = prismaPostgres(defaultClientConfig(databaseUrl));
-  const { default: app } = await import('../server.js');
+  await database.sql.exec`DROP TABLE IF EXISTS sessions CASCADE`;
+  await database.sql.exec`DROP TABLE IF EXISTS memberships CASCADE`;
+  await database.sql.exec`DROP TABLE IF EXISTS calls CASCADE`;
+  await database.sql.exec`DROP TABLE IF EXISTS games CASCADE`;
+  await database.sql.exec`DROP TABLE IF EXISTS users CASCADE`;
+  await database.sql.exec`DROP TABLE IF EXISTS parishes CASCADE`;
 
-  await database.sql.exec`DROP TABLE IF EXISTS calls`;
-  await database.sql.exec`DROP TABLE IF EXISTS games`;
+  const { default: app } = await import('../server.js');
+  const parishA = request.agent(app);
+  const parishB = request.agent(app);
 
   try {
-    const currentResponse = await request(app).get('/api/games/current').expect(200);
-    const firstGame = currentResponse.body;
-
-    const firstCall = await request(app)
-      .post(`/api/games/${firstGame.id}/calls`)
-      .send({ number: 52 })
+    const accountA = await parishA
+      .post('/api/auth/register')
+      .send({
+        parishName: 'Paróquia São José',
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'senha-segura-a',
+      })
       .expect(201);
 
-    assert.equal(firstCall.body.number, 52);
-    assert.equal(firstCall.body.sequence, 1);
+    assert.equal(accountA.body.parish.name, 'Paróquia São José');
 
-    await request(app)
-      .post(`/api/games/${firstGame.id}/calls`)
-      .send({ number: 52 })
-      .expect(409);
+    const firstGame = (await parishA.get('/api/games/current').expect(200)).body;
+    await parishA.post(`/api/games/${firstGame.id}/calls`).send({ number: 52 }).expect(201);
+    await parishA.post(`/api/games/${firstGame.id}/calls`).send({ number: 52 }).expect(409);
 
-    await request(app)
-      .post(`/api/games/${firstGame.id}/calls`)
-      .send({ number: 7 })
+    const accountB = await parishB
+      .post('/api/auth/register')
+      .send({
+        parishName: 'Paróquia Santa Rita',
+        name: 'Bruno',
+        email: 'bruno@example.com',
+        password: 'senha-segura-b',
+      })
       .expect(201);
 
-    const undone = await request(app)
-      .delete(`/api/games/${firstGame.id}/calls/last`)
+    assert.notEqual(accountB.body.parish.id, accountA.body.parish.id);
+
+    const secondGame = (await parishB.get('/api/games/current').expect(200)).body;
+    assert.notEqual(secondGame.id, firstGame.id);
+    assert.deepEqual(secondGame.calls, []);
+
+    await parishB.get(`/api/games/${firstGame.id}`).expect(404);
+    await parishB.post(`/api/games/${firstGame.id}/calls`).send({ number: 7 }).expect(404);
+
+    const gamesA = (await parishA.get('/api/games').expect(200)).body;
+    const gamesB = (await parishB.get('/api/games').expect(200)).body;
+    assert.equal(gamesA.length, 1);
+    assert.equal(gamesA[0].call_count, 1);
+    assert.equal(gamesB.length, 1);
+    assert.equal(gamesB[0].call_count, 0);
+
+    await parishA.post('/api/auth/logout').expect(204);
+    await parishA.get('/api/games/current').expect(401);
+
+    await parishA
+      .post('/api/auth/login')
+      .send({ email: 'ana@example.com', password: 'senha-segura-a' })
       .expect(200);
 
-    assert.equal(undone.body.number, 7);
-
-    const newGame = await request(app).post('/api/games').expect(201);
-    assert.notEqual(newGame.body.id, firstGame.id);
-
-    const games = await request(app).get('/api/games').expect(200);
-    assert.equal(games.body.length, 2);
-    assert.equal(games.body[0].status, 'active');
-    assert.equal(games.body[1].status, 'finished');
-    assert.equal(games.body[1].call_count, 1);
-
-    const archived = await request(app).get(`/api/games/${firstGame.id}`).expect(200);
-    assert.deepEqual(archived.body.calls.map((call) => call.number), [52]);
+    const restored = (await parishA.get('/api/games/current').expect(200)).body;
+    assert.deepEqual(restored.calls.map((call) => call.number), [52]);
   } finally {
-    await database.sql.exec`DROP TABLE IF EXISTS calls`;
-    await database.sql.exec`DROP TABLE IF EXISTS games`;
+    await database.sql.exec`DROP TABLE IF EXISTS sessions CASCADE`;
+    await database.sql.exec`DROP TABLE IF EXISTS memberships CASCADE`;
+    await database.sql.exec`DROP TABLE IF EXISTS calls CASCADE`;
+    await database.sql.exec`DROP TABLE IF EXISTS games CASCADE`;
+    await database.sql.exec`DROP TABLE IF EXISTS users CASCADE`;
+    await database.sql.exec`DROP TABLE IF EXISTS parishes CASCADE`;
   }
 });
