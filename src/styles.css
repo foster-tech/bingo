@@ -130,6 +130,8 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 .card-divider { height: 1px; margin: 14px 0 9px; background: linear-gradient(90deg, transparent, var(--line), transparent); }
 .text-button { width: 100%; padding: 8px 5px; display: flex; align-items: center; gap: 11px; border: 0; background: none; color: #22c8ff; cursor: pointer; font-weight: 700; text-align: left; }
 .text-button.muted { color: #9aa8bc; }
+.control-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.control-actions .text-button { min-width: 0; justify-content: center; gap: 7px; padding: 8px 4px; font-size: 12px; text-align: center; }
 
 .recent-card { padding: 16px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; }
@@ -145,11 +147,14 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 .parish-logo-card {
   flex: 1 1 180px;
   min-height: 130px;
+  width: 100%;
   overflow: hidden;
   padding: 10px;
   display: grid;
   place-items: center;
   background: #fff;
+  color: #172332;
+  cursor: pointer;
 }
 .parish-logo-card img {
   display: block;
@@ -158,6 +163,20 @@ button:disabled { opacity: .42; cursor: not-allowed; }
   object-fit: contain;
   border-radius: 8px;
 }
+.branding-button { position: relative; font: inherit; }
+.branding-button:hover:not(:disabled) { border-color: var(--cyan); }
+.branding-button.has-image:hover img, .parish-branding-button.has-image:hover img { opacity: .35; }
+.branding-placeholder { display: grid; justify-items: center; gap: 7px; color: #496175; text-align: center; }
+.branding-placeholder svg { color: #0b9fdf; }
+.branding-placeholder b { color: #172b3c; font-size: 14px; }
+.branding-placeholder small { max-width: 210px; color: #708397; font-size: 11px; line-height: 1.35; }
+.branding-placeholder.compact { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; color: #8394aa; }
+.branding-placeholder.compact > span { display: grid; gap: 2px; text-align: left; }
+.branding-placeholder.compact b { color: #b9c7da; font-size: 11px; }
+.branding-placeholder.compact small { color: #6f8097; font-size: 9px; }
+.branding-edit { position: absolute; inset: 50% auto auto 50%; translate: -50% -50%; display: none; padding: 7px 10px; border: 1px solid rgba(24, 201, 255, .45); border-radius: 8px; background: rgba(4, 12, 20, .88); color: white; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.branding-button:hover .branding-edit, .parish-branding-button:hover .branding-edit { display: block; }
+.visually-hidden { position: fixed !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; white-space: nowrap !important; opacity: 0 !important; pointer-events: none !important; }
 
 .main-stage { display: grid; grid-template-rows: auto 1fr; gap: 20px; min-width: 0; }
 .number-board { display: grid; gap: 7px; padding: 6px; border-radius: 15px; background: #fff; box-shadow: 0 12px 34px rgba(0, 0, 0, .22); }
@@ -195,6 +214,9 @@ button:disabled { opacity: .42; cursor: not-allowed; }
   border-radius: 12px;
   background: rgba(3, 8, 18, .58);
 }
+.parish-branding-button { position: relative; min-width: 170px; min-height: 70px; flex: 1 1 230px; overflow: hidden; display: grid; place-items: center; padding: 7px 9px; border: 1px dashed rgba(137, 166, 205, .36); border-radius: 9px; background: rgba(6, 13, 23, .72); cursor: pointer; }
+.parish-branding-button:hover:not(:disabled) { border-color: var(--cyan); }
+.parish-branding-button img { display: block; width: 100%; height: 64px; object-fit: contain; border-radius: 6px; transition: opacity .18s; }
 .parish-logo-slot { min-width: 0; min-height: 62px; padding: 7px 9px; display: flex; align-items: center; gap: 10px; border: 1px dashed rgba(137, 166, 205, .36); border-radius: 9px; color: #8e9bb0; }
 .parish-logo-slot > div:last-child { min-width: 0; }
 .parish-logo-slot small, .fostertech-brand small { display: block; margin-bottom: 4px; color: #64748d; font-size: 7px; font-weight: 800; letter-spacing: 1.3px; }
@@ -203,7 +225,7 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 .parish-symbol span { position: absolute; left: 50%; top: 8px; width: 3px; height: 25px; translate: -50% 0; border-radius: 3px; background: #8695aa; }
 .parish-symbol span:last-child { top: 15px; width: 17px; height: 3px; }
 .partner-divider { width: 1px; height: 48px; background: linear-gradient(transparent, rgba(152, 179, 216, .45), transparent); }
-.fostertech-brand { min-width: 0; }
+.fostertech-brand { min-width: 0; flex: 1 1 220px; }
 .fostertech-brand img { display: block; width: 100%; height: 62px; object-fit: contain; object-position: left center; border-radius: 5px; }
 
 .camera-card { padding: 8px; display: grid; grid-template-rows: 48px 1fr; }
@@ -259,6 +281,8 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 .pix-title { margin-top: 14px; color: #fff; font-size: 19px; }
 .pix-hint { margin: 4px 0 16px; color: #8391a5; font-size: 12px; }
 .pix-support .primary-button { width: 100%; }
+.fullscreen-return-button { position: fixed; z-index: 90; right: 18px; bottom: 18px; min-height: 42px; padding: 0 16px; border: 1px solid rgba(24, 201, 255, .5); border-radius: 10px; background: rgba(5, 18, 29, .92); color: #cdefff; box-shadow: 0 10px 28px rgba(0, 0, 0, .38); backdrop-filter: blur(10px); cursor: pointer; font-size: 12px; font-weight: 800; }
+.fullscreen-return-button:hover { border-color: var(--cyan); background: rgba(9, 42, 62, .96); }
 
 @media (max-width: 1180px) {
   .app-shell { grid-template-columns: 270px minmax(0, 1fr); padding: 12px; gap: 12px; }
@@ -269,7 +293,7 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 
 @media (max-width: 780px) {
   .app-shell { width: 100%; margin: 0; min-height: 100vh; border: 0; border-radius: 0; grid-template-columns: 1fr; }
-  .control-panel { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }.brand { grid-column: 1 / -1; }.control-card { grid-row: span 2; }.recent-card, .parish-logo-card { grid-column: 1 / -1; }
+  .control-panel { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }.brand { grid-column: 1 / -1; }.control-card { grid-row: span 2; }.recent-card, .parish-logo-card, .account-card { grid-column: 1 / -1; }
   .main-stage { grid-row: 1; }.number-row { grid-template-columns: 54px minmax(680px, 1fr); }.number-board { overflow-x: auto; padding-bottom: 5px; }.letter-cell { position: sticky; left: 0; z-index: 2; }
   .fullscreen-gate-card { width: min(480px, 100%); grid-template-columns: 1fr; gap: 26px; }
   .pix-qr-frame { width: min(240px, 100%); }
@@ -285,7 +309,8 @@ button:disabled { opacity: .42; cursor: not-allowed; }
   .app-shell { padding: 8px; }.control-panel { grid-template-columns: 1fr; }.brand { grid-column: auto; }.control-card { grid-row: auto; }.recent-card, .parish-logo-card { grid-column: auto; }
   .stage-lower { min-height: 0; }.current-card { min-height: 410px; }.camera-card { min-height: 330px; }
   .brand-word { font-size: 52px; }.score-card { min-height: 90px; }
-  .partners { grid-template-columns: 1fr; gap: 8px; }
+  .partners { flex-direction: column; gap: 8px; }
+  .parish-branding-button, .fostertech-brand { width: 100%; flex-basis: auto; }
   .partner-divider { width: 100%; height: 1px; background: linear-gradient(90deg, transparent, rgba(152, 179, 216, .45), transparent); }
   .fostertech-brand img { height: 54px; }
   .fullscreen-gate { padding: 10px; place-items: start center; }

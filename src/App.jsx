@@ -29,6 +29,40 @@ async function api(url, options = {}) {
   return data;
 }
 
+async function prepareBrandingImage(file, kind) {
+  if (!file?.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.');
+  if (file.size > 10 * 1024 * 1024) throw new Error('A imagem original deve ter no máximo 10 MB.');
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('Não foi possível abrir esta imagem.'));
+      element.src = objectUrl;
+    });
+    const limits = kind === 'logo' ? { width: 900, height: 500 } : { width: 1400, height: 700 };
+    const scale = Math.min(1, limits.width / image.naturalWidth, limits.height / image.naturalHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', .86));
+    if (!blob) throw new Error('Não foi possível preparar esta imagem.');
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Não foi possível ler esta imagem.'));
+      reader.readAsDataURL(blob);
+    });
+    if (dataUrl.length > 1_500_000) throw new Error('A imagem ficou muito grande. Escolha um arquivo menor.');
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function Icon({ name, size = 20 }) {
   const paths = {
     plus: <><path d="M12 5v14M5 12h14" /></>,
@@ -197,10 +231,16 @@ function App() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [fullscreenPrompt, setFullscreenPrompt] = useState(false);
+  const [fullscreenReturnVisible, setFullscreenReturnVisible] = useState(false);
   const [supportAmount, setSupportAmount] = useState('20');
   const [pixQrAvailable, setPixQrAvailable] = useState(true);
+  const [brandingBusy, setBrandingBusy] = useState('');
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const logoInputRef = useRef(null);
+  const bannerInputRef = useRef(null);
+  const brandingPickerOpenRef = useRef(false);
+  const restoreFullscreenAfterPickerRef = useRef(false);
 
   const shown = displayGame || game;
   const calls = shown?.calls ?? [];
@@ -239,13 +279,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const handleFullscreenChange = () => setFullscreenPrompt(!document.fullscreenElement);
+    const handleFullscreenChange = () => {
+      if (document.fullscreenElement) {
+        setFullscreenPrompt(false);
+        setFullscreenReturnVisible(false);
+        return;
+      }
+      if (brandingPickerOpenRef.current) {
+        setFullscreenPrompt(false);
+        return;
+      }
+      setFullscreenPrompt(true);
+    };
 
     async function openFullscreen() {
       if (document.fullscreenElement) return;
       try {
         await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
       } catch {
+        setFullscreenReturnVisible(false);
         setFullscreenPrompt(true);
       }
     }
@@ -255,12 +307,53 @@ function App() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  useEffect(() => {
+    let focusTimer;
+    const handleWindowFocus = () => {
+      if (!brandingPickerOpenRef.current) return;
+      clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => {
+        if (brandingPickerOpenRef.current) finishBrandingPicker();
+      }, 250);
+    };
+    window.addEventListener('focus', handleWindowFocus);
+    return () => {
+      clearTimeout(focusTimer);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, []);
+
   async function enterFullscreen() {
     try {
       await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
       setFullscreenPrompt(false);
+      setFullscreenReturnVisible(false);
     } catch {
       setMessage('O navegador não permitiu abrir o painel em tela cheia.');
+    }
+  }
+
+  function openBrandingPicker(kind) {
+    brandingPickerOpenRef.current = true;
+    restoreFullscreenAfterPickerRef.current = Boolean(document.fullscreenElement) || fullscreenReturnVisible;
+    setFullscreenPrompt(false);
+    setFullscreenReturnVisible(false);
+    (kind === 'logo' ? logoInputRef : bannerInputRef).current?.click();
+  }
+
+  async function finishBrandingPicker() {
+    const shouldRestore = restoreFullscreenAfterPickerRef.current;
+    brandingPickerOpenRef.current = false;
+    restoreFullscreenAfterPickerRef.current = false;
+    if (!shouldRestore || document.fullscreenElement) return;
+
+    try {
+      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      setFullscreenPrompt(false);
+      setFullscreenReturnVisible(false);
+    } catch {
+      setFullscreenPrompt(false);
+      setFullscreenReturnVisible(true);
     }
   }
 
@@ -283,6 +376,31 @@ function App() {
       setHistoryOpen(false);
       setBusy(false);
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  async function uploadBranding(kind, event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    await finishBrandingPicker();
+    if (!file) return;
+
+    setBrandingBusy(kind);
+    setMessage('');
+    try {
+      const dataUrl = await prepareBrandingImage(file, kind);
+      const branding = await api('/api/parish/branding', {
+        method: 'PUT',
+        body: JSON.stringify({ kind, dataUrl }),
+      });
+      setAccount((current) => ({
+        ...current,
+        parish: { ...current.parish, ...branding },
+      }));
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBrandingBusy('');
     }
   }
 
@@ -467,17 +585,13 @@ function App() {
           </div>
         </div>
       )}
+      {fullscreenReturnVisible && !fullscreenPrompt && (
+        <button className="fullscreen-return-button" type="button" onClick={enterFullscreen}>
+          Voltar à tela cheia
+        </button>
+      )}
       <aside className="control-panel">
         <Logo />
-
-        <div className="account-card">
-          <div>
-            <span>PARÓQUIA</span>
-            <strong>{account.parish.name}</strong>
-            <small>{account.user.name}</small>
-          </div>
-          <button type="button" onClick={logout} disabled={busy}>Sair</button>
-        </div>
 
         <div className="score-row">
           <div className="score-card"><span>CHAMADAS</span><strong>{pad(calls.length)}</strong></div>
@@ -514,17 +628,44 @@ function App() {
             <Icon name="undo" /> Desfazer última
           </button>
           <div className="card-divider" />
-          <button className="text-button" onClick={newGame} disabled={busy}>
-            <Icon name="new" /> Novo jogo
-          </button>
-          <button className="text-button muted" onClick={() => setHistoryOpen(true)}>
-            <Icon name="history" /> Ver histórico
-          </button>
+          <div className="control-actions">
+            <button className="text-button" onClick={newGame} disabled={busy}>
+              <Icon name="new" /> Novo jogo
+            </button>
+            <button className="text-button muted" onClick={() => setHistoryOpen(true)}>
+              <Icon name="history" /> Ver histórico
+            </button>
+          </div>
         </section>
 
-        <section className="parish-logo-card" aria-label="Paróquia Nossa Senhora da Conceição">
-          <img src="/FESTA_PADROEIRA.png" alt="Festa Padroeira" />
-        </section>
+        <button
+          className={`parish-logo-card branding-button ${account.parish.bannerData ? 'has-image' : ''}`}
+          type="button"
+          onClick={() => openBrandingPicker('banner')}
+          disabled={brandingBusy === 'banner'}
+          aria-label={account.parish.bannerData ? 'Alterar banner da paróquia' : 'Adicionar banner da paróquia'}
+        >
+          {account.parish.bannerData ? (
+            <img src={account.parish.bannerData} alt={`Banner da ${account.parish.name}`} />
+          ) : (
+            <span className="branding-placeholder">
+              <Icon name="plus" size={25} />
+              <b>Banner da paróquia</b>
+              <small>Clique aqui para adicionar o banner de sua paróquia</small>
+            </span>
+          )}
+          {account.parish.bannerData && <span className="branding-edit">Clique para alterar o banner</span>}
+        </button>
+        <input ref={bannerInputRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadBranding('banner', event)} onCancel={finishBrandingPicker} />
+
+        <div className="account-card">
+          <div>
+            <span>PARÓQUIA</span>
+            <strong>{account.parish.name}</strong>
+            <small>{account.user.name}</small>
+          </div>
+          <button type="button" onClick={logout} disabled={busy}>Sair</button>
+        </div>
       </aside>
 
       <section className="main-stage">
@@ -559,7 +700,24 @@ function App() {
               {current ? <><span>{numberLetter(current)}</span> número <strong>{current}</strong></> : 'Faça a primeira chamada'}
             </div>
             <div className="partners" aria-label="Realização e apoio">
-              <img src="/LogoHorizontalMatriz.png" height="60px" alt="Festa Padroeira" />
+              <button
+                className={`parish-branding-button ${account.parish.logoData ? 'has-image' : ''}`}
+                type="button"
+                onClick={() => openBrandingPicker('logo')}
+                disabled={brandingBusy === 'logo'}
+                aria-label={account.parish.logoData ? 'Alterar logo da paróquia' : 'Adicionar logo da paróquia'}
+              >
+                {account.parish.logoData ? (
+                  <img src={account.parish.logoData} alt={`Logo da ${account.parish.name}`} />
+                ) : (
+                  <span className="branding-placeholder compact">
+                    <Icon name="plus" size={20} />
+                    <span><b>Logo da paróquia</b><small>Clique aqui para adicionar</small></span>
+                  </span>
+                )}
+                {account.parish.logoData && <span className="branding-edit">Alterar logo</span>}
+              </button>
+              <input ref={logoInputRef} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadBranding('logo', event)} onCancel={finishBrandingPicker} />
               <div className="partner-divider" aria-hidden="true" />
               <div className="fostertech-brand">
                 <small>TECNOLOGIA POR</small>

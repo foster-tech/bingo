@@ -35,6 +35,16 @@ test('separa contas, jogos e histórico por paróquia', {
       .expect(201);
 
     assert.equal(accountA.body.parish.name, 'Paróquia São José');
+    assert.equal(accountA.body.parish.logoData, null);
+
+    const branding = await parishA
+      .put('/api/parish/branding')
+      .send({ kind: 'logo', dataUrl: 'data:image/png;base64,iVBORw0KGgo=' })
+      .expect(200);
+    assert.equal(branding.body.logoData, 'data:image/png;base64,iVBORw0KGgo=');
+
+    const refreshedAccountA = await parishA.get('/api/auth/me').expect(200);
+    assert.equal(refreshedAccountA.body.parish.logoData, branding.body.logoData);
 
     const firstGame = (await parishA.get('/api/games/current').expect(200)).body;
     await parishA.post(`/api/games/${firstGame.id}/calls`).send({ number: 52 }).expect(201);
@@ -51,6 +61,7 @@ test('separa contas, jogos e histórico por paróquia', {
       .expect(201);
 
     assert.notEqual(accountB.body.parish.id, accountA.body.parish.id);
+    assert.equal(accountB.body.parish.logoData, null);
 
     const secondGame = (await parishB.get('/api/games/current').expect(200)).body;
     assert.notEqual(secondGame.id, firstGame.id);

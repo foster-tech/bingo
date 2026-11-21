@@ -12,6 +12,7 @@ import {
   listGames,
   registerAccount,
   undoLastCall,
+  updateParishBranding,
 } from './src/database.js';
 
 const app = express();
@@ -20,7 +21,7 @@ const sessionCookie = 'bingo_session';
 const sessionMaxAge = 30 * 24 * 60 * 60 * 1000;
 
 app.use(cors());
-app.use(express.json({ limit: '32kb' }));
+app.use(express.json({ limit: '2mb' }));
 
 function readCookie(request, name) {
   const cookies = String(request.headers.cookie ?? '').split(';');
@@ -86,6 +87,15 @@ app.post('/api/auth/logout', async (req, res) => {
 
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json(req.account);
+});
+
+app.put('/api/parish/branding', requireAuth, async (req, res) => {
+  const branding = await updateParishBranding(
+    req.account.parish.id,
+    req.body?.kind,
+    req.body?.dataUrl,
+  );
+  res.json(branding);
 });
 
 app.use('/api/games', requireAuth);
