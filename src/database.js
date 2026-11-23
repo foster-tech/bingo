@@ -7,13 +7,15 @@ import {
   verifyPassword,
 } from './auth.js';
 
+let databaseClient;
 let schemaPromise;
 
 function database() {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL não foi definida.');
   }
-  return prismaPostgres(defaultClientConfig(process.env.DATABASE_URL));
+  databaseClient ??= prismaPostgres(defaultClientConfig(process.env.DATABASE_URL));
+  return databaseClient;
 }
 
 function httpError(status, message) {
@@ -441,25 +443,35 @@ export async function updateGameWinCondition(parishId, gameId, winCondition) {
 
 export async function addCall(parishId, gameId, number) {
   await ensureSchema();
-  const sql = database();
-  const [game] = await sql.sql`
-    SELECT status FROM games WHERE id = ${gameId} AND parish_id = ${parishId}
-  `.collect();
-
-  if (!game) return { status: 404, error: 'Jogo não encontrado.' };
-  if (game.status !== 'active') return { status: 409, error: 'Este jogo já foi encerrado.' };
   if (!Number.isInteger(number) || number < 1 || number > 75) {
     return { status: 400, error: 'Digite um número inteiro entre 1 e 75.' };
   }
 
+  const sql = database();
   try {
     const [call] = await sql.sql`
       INSERT INTO calls (game_id, number, sequence)
-      SELECT ${gameId}, ${number}, COALESCE(MAX(sequence), 0) + 1
-      FROM calls
-      WHERE game_id = ${gameId}
+      SELECT
+        game.id,
+        ${number},
+        COALESCE((
+          SELECT MAX(existing.sequence)
+          FROM calls existing
+          WHERE existing.game_id = game.id
+        ), 0) + 1
+      FROM games game
+      WHERE game.id = ${gameId}
+        AND game.parish_id = ${parishId}
+        AND game.status = 'active'
       RETURNING id, game_id, number, sequence, called_at
     `.collect();
+    if (!call) {
+      const [game] = await sql.sql`
+        SELECT status FROM games WHERE id = ${gameId} AND parish_id = ${parishId}
+      `.collect();
+      if (!game) return { status: 404, error: 'Jogo não encontrado.' };
+      return { status: 409, error: 'Este jogo já foi encerrado.' };
+    }
     return { call };
   } catch (error) {
     if (error.code === '23505') {

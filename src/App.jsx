@@ -431,16 +431,39 @@ function App() {
   async function addCall(number) {
     if (!game || busy || isArchive) return;
     const parsed = Number(number);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 75 || calledNumbers.has(parsed)) return;
+
+    const gameId = game.id;
+    const optimisticId = `pending-${gameId}-${parsed}`;
+    const optimisticCall = {
+      id: optimisticId,
+      game_id: gameId,
+      number: parsed,
+      sequence: game.calls.length + 1,
+      called_at: new Date().toISOString(),
+    };
+
+    setGame((current) => current?.id === gameId
+      ? { ...current, calls: [...current.calls, optimisticCall] }
+      : current);
     setBusy(true);
     setMessage('');
     try {
-      await api(`/api/games/${game.id}/calls`, {
+      const savedCall = await api(`/api/games/${gameId}/calls`, {
         method: 'POST',
         body: JSON.stringify({ number: parsed }),
       });
       setValue('');
-      await refresh();
+      setGame((current) => current?.id === gameId
+        ? {
+            ...current,
+            calls: current.calls.map((call) => call.id === optimisticId ? savedCall : call),
+          }
+        : current);
     } catch (error) {
+      setGame((current) => current?.id === gameId
+        ? { ...current, calls: current.calls.filter((call) => call.id !== optimisticId) }
+        : current);
       setMessage(error.message);
     } finally {
       setBusy(false);

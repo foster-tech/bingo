@@ -53,7 +53,12 @@ test('separa contas, jogos e histórico por paróquia', {
       .send({ winCondition: 'full_card' })
       .expect(200);
     assert.equal(changedCondition.body.win_condition, 'full_card');
-    await parishA.post(`/api/games/${firstGame.id}/calls`).send({ number: 52 }).expect(201);
+    const savedCall = await parishA
+      .post(`/api/games/${firstGame.id}/calls`)
+      .send({ number: 52 })
+      .expect(201);
+    assert.equal(savedCall.body.number, 52);
+    assert.equal(savedCall.body.sequence, 1);
     await parishA.post(`/api/games/${firstGame.id}/calls`).send({ number: 52 }).expect(409);
 
     const accountB = await parishB

@@ -187,7 +187,7 @@ button:disabled { opacity: .42; cursor: not-allowed; }
 .numbers button:hover:not(:disabled) { color: #000; background: #dff5ff; }
 .numbers button.called { color: white; background: linear-gradient(145deg, #15bfff, #058af0); box-shadow: 0 7px 16px rgba(0, 132, 255, .28), inset 0 1px rgba(255,255,255,.3); transform: scale(.93); opacity: 1; }
 
-.stage-lower { display: grid; grid-template-columns: 1.12fr .92fr; gap: 14px; min-height: 390px; }
+.stage-lower { display: grid; grid-template-columns: 1.22fr .82fr; gap: 14px; min-height: 390px; }
 .current-card, .camera-card { position: relative; min-width: 0; overflow: hidden; border-radius: 14px; border: 1px solid rgba(88, 131, 182, .38); background: linear-gradient(145deg, rgba(14, 20, 40, .98), rgba(5, 12, 25, .96)); }
 .current-card { display: flex; flex-direction: column; align-items: stretch; padding: 18px; border-color: transparent; background: linear-gradient(#0a1023, #08101d) padding-box, linear-gradient(135deg, #ee36ff, #5843ff 47%, #08aef1) border-box; box-shadow: inset 0 -80px 100px rgba(12, 47, 100, .12); }
 .current-card::before { content: ''; position: absolute; width: 240px; height: 90px; border-radius: 50%; left: 28%; top: 53%; translate: -50% -50%; background: #1876ff; opacity: .15; filter: blur(18px); }
