@@ -228,6 +228,8 @@ function App() {
   const [message, setMessage] = useState('');
   const [initialError, setInitialError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [newGameDialogOpen, setNewGameDialogOpen] = useState(false);
+  const [creatingNewGame, setCreatingNewGame] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [fullscreenPrompt, setFullscreenPrompt] = useState(false);
@@ -502,8 +504,18 @@ function App() {
     }
   }
 
-  async function newGame() {
-    if (game?.calls.length && !window.confirm('Encerrar este jogo e começar um novo?')) return;
+  function requestNewGame() {
+    if (!game || busy) return;
+    if (game.calls.length) {
+      setNewGameDialogOpen(true);
+      return;
+    }
+    createNewGame();
+  }
+
+  async function createNewGame() {
+    setNewGameDialogOpen(true);
+    setCreatingNewGame(true);
     setBusy(true);
     setMessage('');
     try {
@@ -513,6 +525,8 @@ function App() {
     } catch (error) {
       setMessage(error.message);
     } finally {
+      setCreatingNewGame(false);
+      setNewGameDialogOpen(false);
       setBusy(false);
     }
   }
@@ -678,6 +692,40 @@ function App() {
           Voltar à tela cheia
         </button>
       )}
+      {newGameDialogOpen && (
+        <div
+          className="modal-backdrop new-game-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (!creatingNewGame && event.target === event.currentTarget) setNewGameDialogOpen(false);
+          }}
+        >
+          <section className="new-game-modal" role="dialog" aria-modal="true" aria-labelledby="new-game-title">
+            {creatingNewGame ? (
+              <div className="new-game-progress" role="status" aria-live="polite">
+                <div className="spinner" />
+                <h2 id="new-game-title">Criando novo jogo…</h2>
+                <p>Aguarde enquanto preparamos uma nova rodada.</p>
+              </div>
+            ) : (
+              <>
+                <span className="new-game-icon"><Icon name="new" size={30} /></span>
+                <p className="eyebrow">NOVA RODADA</p>
+                <h2 id="new-game-title">Começar um novo jogo?</h2>
+                <p>O jogo atual será encerrado e permanecerá disponível no histórico.</p>
+                <div className="new-game-actions">
+                  <button className="secondary-button" type="button" onClick={() => setNewGameDialogOpen(false)}>
+                    Cancelar
+                  </button>
+                  <button className="primary-button" type="button" onClick={createNewGame}>
+                    Criar novo jogo
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+      )}
       {celebrationId > 0 && (
         <div className="bingo-celebration" role="status" aria-live="assertive" onClick={closeBingoCelebration}>
           <div className="confetti-layer" aria-hidden="true">
@@ -741,7 +789,7 @@ function App() {
           </button>
           <div className="card-divider" />
           <div className="control-actions">
-            <button className="text-button" onClick={newGame} disabled={busy}>
+            <button className="text-button" onClick={requestNewGame} disabled={busy}>
               <Icon name="new" /> Novo jogo
             </button>
             <button className="text-button muted" onClick={() => setHistoryOpen(true)}>
