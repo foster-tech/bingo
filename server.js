@@ -8,6 +8,7 @@ import {
   deleteSession,
   getCurrentGame,
   getGame,
+  getParishBranding,
   getSessionAccount,
   listGames,
   registerAccount,
@@ -87,9 +88,13 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 app.get('/api/auth/me', async (req, res) => {
-  const account = await getSessionAccount(readCookie(req, sessionCookie), true);
+  const account = await getSessionAccount(readCookie(req, sessionCookie));
   if (!account) return res.status(401).json({ error: 'Entre na sua conta para continuar.' });
   res.json(account);
+});
+
+app.get('/api/parish/branding', requireAuth, async (req, res) => {
+  res.json(await getParishBranding(req.account.parish.id));
 });
 
 app.put('/api/parish/branding', requireAuth, async (req, res) => {

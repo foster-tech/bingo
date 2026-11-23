@@ -44,7 +44,9 @@ test('separa contas, jogos e histórico por paróquia', {
     assert.equal(branding.body.logoData, 'data:image/png;base64,iVBORw0KGgo=');
 
     const refreshedAccountA = await parishA.get('/api/auth/me').expect(200);
-    assert.equal(refreshedAccountA.body.parish.logoData, branding.body.logoData);
+    assert.equal(refreshedAccountA.body.parish.logoData, null);
+    const refreshedBrandingA = await parishA.get('/api/parish/branding').expect(200);
+    assert.equal(refreshedBrandingA.body.logoData, branding.body.logoData);
 
     const firstGame = (await parishA.get('/api/games/current').expect(200)).body;
     assert.equal(firstGame.win_condition, 'line');

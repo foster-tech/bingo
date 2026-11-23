@@ -270,7 +270,13 @@ function App() {
       try {
         const currentAccount = await api('/api/auth/me');
         setAccount(currentAccount);
-        setGame(await api('/api/games/current'));
+        setAuthChecked(true);
+        loadBranding();
+        try {
+          setGame(await api('/api/games/current'));
+        } catch (gameError) {
+          setInitialError(gameError.message);
+        }
       } catch (error) {
         if (error.status === 401) setAccount(null);
         else setInitialError(error.message);
@@ -378,7 +384,19 @@ function App() {
   async function handleAuthenticated(nextAccount) {
     setAccount(nextAccount);
     setInitialError('');
+    loadBranding();
     setGame(await api('/api/games/current'));
+  }
+
+  async function loadBranding() {
+    try {
+      const branding = await api('/api/parish/branding');
+      setAccount((current) => current
+        ? { ...current, parish: { ...current.parish, ...branding } }
+        : current);
+    } catch (error) {
+      if (error.status !== 401) console.warn('Não foi possível carregar as imagens da paróquia.');
+    }
   }
 
   async function logout() {
@@ -813,9 +831,9 @@ function App() {
                 </button>
               </div>
             </div>
-            <div className="current-caption">
+            {/* <div className="current-caption">
               {current ? <><span>{numberLetter(current)}</span> número <strong>{current}</strong></> : 'Faça a primeira chamada'}
-            </div>
+            </div> */}
             <div className="partners" aria-label="Realização e apoio">
               <button
                 className={`parish-branding-button ${account.parish.logoData ? 'has-image' : ''}`}
