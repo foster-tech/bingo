@@ -12,6 +12,7 @@ import {
   listGames,
   registerAccount,
   undoLastCall,
+  updateGameWinCondition,
   updateParishBranding,
 } from './src/database.js';
 
@@ -85,8 +86,10 @@ app.post('/api/auth/logout', async (req, res) => {
   res.status(204).end();
 });
 
-app.get('/api/auth/me', requireAuth, (req, res) => {
-  res.json(req.account);
+app.get('/api/auth/me', async (req, res) => {
+  const account = await getSessionAccount(readCookie(req, sessionCookie), true);
+  if (!account) return res.status(401).json({ error: 'Entre na sua conta para continuar.' });
+  res.json(account);
 });
 
 app.put('/api/parish/branding', requireAuth, async (req, res) => {
@@ -116,6 +119,14 @@ app.get('/api/games/:id', async (req, res) => {
 
 app.post('/api/games', async (req, res) => {
   res.status(201).json(await createGame(req.account.parish.id));
+});
+
+app.patch('/api/games/:id/win-condition', async (req, res) => {
+  res.json(await updateGameWinCondition(
+    req.account.parish.id,
+    Number(req.params.id),
+    req.body?.winCondition,
+  ));
 });
 
 app.post('/api/games/:id/calls', async (req, res) => {

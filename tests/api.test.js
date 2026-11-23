@@ -47,6 +47,12 @@ test('separa contas, jogos e histórico por paróquia', {
     assert.equal(refreshedAccountA.body.parish.logoData, branding.body.logoData);
 
     const firstGame = (await parishA.get('/api/games/current').expect(200)).body;
+    assert.equal(firstGame.win_condition, 'line');
+    const changedCondition = await parishA
+      .patch(`/api/games/${firstGame.id}/win-condition`)
+      .send({ winCondition: 'full_card' })
+      .expect(200);
+    assert.equal(changedCondition.body.win_condition, 'full_card');
     await parishA.post(`/api/games/${firstGame.id}/calls`).send({ number: 52 }).expect(201);
     await parishA.post(`/api/games/${firstGame.id}/calls`).send({ number: 52 }).expect(409);
 
@@ -68,6 +74,10 @@ test('separa contas, jogos e histórico por paróquia', {
     assert.deepEqual(secondGame.calls, []);
 
     await parishB.get(`/api/games/${firstGame.id}`).expect(404);
+    await parishB
+      .patch(`/api/games/${firstGame.id}/win-condition`)
+      .send({ winCondition: 'line' })
+      .expect(404);
     await parishB.post(`/api/games/${firstGame.id}/calls`).send({ number: 7 }).expect(404);
 
     const gamesA = (await parishA.get('/api/games').expect(200)).body;
@@ -86,6 +96,7 @@ test('separa contas, jogos e histórico por paróquia', {
       .expect(200);
 
     const restored = (await parishA.get('/api/games/current').expect(200)).body;
+    assert.equal(restored.win_condition, 'full_card');
     assert.deepEqual(restored.calls.map((call) => call.number), [52]);
   } finally {
     await database.sql.exec`DROP TABLE IF EXISTS sessions CASCADE`;

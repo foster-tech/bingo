@@ -235,12 +235,14 @@ function App() {
   const [supportAmount, setSupportAmount] = useState('20');
   const [pixQrAvailable, setPixQrAvailable] = useState(true);
   const [brandingBusy, setBrandingBusy] = useState('');
+  const [celebrationId, setCelebrationId] = useState(0);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const logoInputRef = useRef(null);
   const bannerInputRef = useRef(null);
   const brandingPickerOpenRef = useRef(false);
   const restoreFullscreenAfterPickerRef = useRef(false);
+  const celebrationTimerRef = useRef(null);
 
   const shown = displayGame || game;
   const calls = shown?.calls ?? [];
@@ -248,6 +250,20 @@ function App() {
   const current = calls.at(-1)?.number;
   const previous = calls.at(-2)?.number;
   const isArchive = Boolean(displayGame);
+  const winCondition = shown?.win_condition ?? 'line';
+  const confettiPieces = useMemo(() => (
+    celebrationId
+      ? Array.from({ length: 110 }, (_, index) => ({
+          id: `${celebrationId}-${index}`,
+          left: `${Math.random() * 100}%`,
+          delay: `${Math.random() * 1.8}s`,
+          duration: `${4.2 + Math.random() * 2.4}s`,
+          drift: `${-90 + Math.random() * 180}px`,
+          rotation: `${360 + Math.random() * 900}deg`,
+          color: ['#18c9ff', '#ff3cea', '#ffd23f', '#12e66d', '#8c35ff', '#ff6b4a'][index % 6],
+        }))
+      : []
+  ), [celebrationId]);
 
   useEffect(() => {
     async function initialize() {
@@ -266,6 +282,8 @@ function App() {
     initialize();
     return () => streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
+
+  useEffect(() => () => clearTimeout(celebrationTimerRef.current), []);
 
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -458,6 +476,35 @@ function App() {
     }
   }
 
+  async function toggleWinCondition() {
+    if (!game || busy || isArchive) return;
+    const nextCondition = game.win_condition === 'full_card' ? 'line' : 'full_card';
+    setBusy(true);
+    setMessage('');
+    try {
+      const updated = await api(`/api/games/${game.id}/win-condition`, {
+        method: 'PATCH',
+        body: JSON.stringify({ winCondition: nextCondition }),
+      });
+      setGame((current) => ({ ...current, win_condition: updated.win_condition }));
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function closeBingoCelebration() {
+    clearTimeout(celebrationTimerRef.current);
+    setCelebrationId(0);
+  }
+
+  function startBingoCelebration() {
+    clearTimeout(celebrationTimerRef.current);
+    setCelebrationId(Date.now());
+    celebrationTimerRef.current = setTimeout(() => setCelebrationId(0), 8000);
+  }
+
   async function openArchivedGame(id) {
     try {
       const selected = await api(`/api/games/${id}`);
@@ -590,6 +637,30 @@ function App() {
           Voltar à tela cheia
         </button>
       )}
+      {celebrationId > 0 && (
+        <div className="bingo-celebration" role="status" aria-live="assertive" onClick={closeBingoCelebration}>
+          <div className="confetti-layer" aria-hidden="true">
+            {confettiPieces.map((piece) => (
+              <i
+                key={piece.id}
+                style={{
+                  '--confetti-left': piece.left,
+                  '--confetti-delay': piece.delay,
+                  '--confetti-duration': piece.duration,
+                  '--confetti-drift': piece.drift,
+                  '--confetti-rotation': piece.rotation,
+                  '--confetti-color': piece.color,
+                }}
+              />
+            ))}
+          </div>
+          <div className="bingo-celebration-text">
+            <span>Temos um</span>
+            <strong>BINGO!</strong>
+            <small>Clique para fechar</small>
+          </div>
+        </div>
+      )}
       <aside className="control-panel">
         <Logo />
 
@@ -695,7 +766,30 @@ function App() {
         <div className="stage-lower">
           <section className="current-card">
             <p className="eyebrow">CHAMADA ATUAL</p>
-            <div className="ball-scene"><Ball number={current} /></div>
+            <div className="current-content">
+              <div className="ball-scene"><Ball number={current} /></div>
+              <div className="game-mode-panel">
+                <p>ESTAMOS JOGANDO</p>
+                <button
+                  className="game-mode-toggle"
+                  type="button"
+                  onClick={toggleWinCondition}
+                  disabled={busy || isArchive}
+                  aria-label="Alternar condição de vitória"
+                >
+                  <span>{winCondition === 'full_card' ? 'CARTELA CHEIA' : 'LINHA'}</span>
+                  <strong>
+                    {winCondition === 'full_card'
+                      ? 'Todos os números da cartela'
+                      : 'Vertical • Horizontal • Diagonal'}
+                  </strong>
+                  {!isArchive && <small>Clique para alternar</small>}
+                </button>
+                <button className="bingo-trigger" type="button" onClick={startBingoCelebration} disabled={busy || isArchive}>
+                  BINGO!
+                </button>
+              </div>
+            </div>
             <div className="current-caption">
               {current ? <><span>{numberLetter(current)}</span> número <strong>{current}</strong></> : 'Faça a primeira chamada'}
             </div>

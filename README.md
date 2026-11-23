@@ -37,6 +37,7 @@ O banco usa chaves estrangeiras, evita números repetidos no mesmo jogo e manté
 - Todas as rotas de jogos validam a paróquia da sessão antes de consultar ou alterar dados.
 - No primeiro cadastro, jogos antigos ainda sem paróquia são vinculados automaticamente à primeira conta.
 - Logo e banner personalizados são redimensionados no navegador e armazenados por paróquia.
+- A condição da rodada (linha ou cartela cheia) é armazenada junto ao jogo e pode ser alternada no painel.
 
 ## Testes
 
